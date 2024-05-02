@@ -12,6 +12,7 @@ char *PASSWORD = "<wifi password>";
 char *IMAGE_URL = "http://url_to_png/";
 
 RTC_DATA_ATTR bool isCleanBoot = true;
+RTC_DATA_ATTR int refreshCount = 0;
 
 void setup() {
   Serial.begin(115200);
@@ -32,12 +33,20 @@ void setup() {
     display.partialUpdate(false, true);
   }
 
-  if (!connectToWifi()) {
-    return;
+  refreshCount++;
+  if (refreshCount > 150) {
+    refreshCount = 0;
+    display.clean(1, 12);
+    display.clean(2, 1);
+    display.clean(0, 9);
   }
 
-  setNtpTime();
-  displayImage();
+  if (connectToWifi() == true) {
+    setNtpTime();
+    displayImage();
+  }
+
+  display.einkOff();
 
   display.rtcSetAlarmEpoch(display.rtcGetEpoch() + 600, RTC_ALARM_MATCH_DHHMMSS);
   esp_sleep_enable_ext0_wakeup(GPIO_NUM_39, 0);
@@ -68,11 +77,11 @@ void setNtpTime() {
   if (isCleanBoot) {
     display.println("");
     display.print("  Getting NTP time...");
-    display.partialUpdate(false, true);
+    display.partialUpdate();
   }
   if (display.getNTPEpoch(&val)) {
     display.print("OK... Setting time!");
-    display.partialUpdate(false, true);
+    display.partialUpdate();
     display.rtcSetEpoch((uint32_t)val);
   } else if (!display.rtcIsSet()) {
     display.rtcSetEpoch(1589610300);
@@ -84,7 +93,7 @@ bool connectToWifi() {
   if (display.connectWiFi(SSID, PASSWORD, 600, true)) {
     if (isCleanBoot) {
       display.print("Connected!");    
-      display.partialUpdate(false, true);
+      display.partialUpdate();
     }
     WiFi.setAutoConnect(true);
     WiFi.setAutoReconnect(true);    
